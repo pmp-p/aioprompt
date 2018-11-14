@@ -49,3 +49,5 @@ async def test():
     return 666
 
 run(__main__, render_ui)
+
+aio.test = test

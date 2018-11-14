@@ -126,38 +126,44 @@ if not sys.flags.inspect:
     raise SystemExit
 
 
-def schedule(fn, a):
+def init():
     global scheduled, scheduler, wrapper_ref
-    if scheduled is None:
-        #! KEEP IT WOULD BE GC OTHERWISE!
-        # wrapper_ref
+    #! KEEP IT WOULD BE GC OTHERWISE!
+    # wrapper_ref
 
-        scheduled = []
-        from ctypes import pythonapi, cast, c_char_p, c_void_p, CFUNCTYPE
+    scheduled = []
+    from ctypes import pythonapi, cast, c_char_p, c_void_p, CFUNCTYPE
 
-        HOOKFUNC = CFUNCTYPE(c_char_p, c_void_p, c_void_p, c_char_p)
+    HOOKFUNC = CFUNCTYPE(c_char_p, c_void_p, c_void_p, c_char_p)
 
-        PyOS_InputHookFunctionPointer = c_void_p.in_dll(pythonapi, "PyOS_InputHook")
+    PyOS_InputHookFunctionPointer = c_void_p.in_dll(pythonapi, "PyOS_InputHook")
 
-        def scheduler(*a, **k):
-            global scheduled
-            # prevent reenter
-            lq = len(scheduled)
-            while lq:
-                fn, a = scheduled.pop(0)
-                fn(a)
-                lq -= 1
-
-        wrapper_ref = HOOKFUNC(scheduler)
-        PyOS_InputHookFunctionPointer.value = cast(wrapper_ref, c_void_p).value
-
-    def schedule(fn, a):
+    def scheduler(*a, **k):
         global scheduled
+        # prevent reenter
+        lq = len(scheduled)
+        while lq:
+            fn, a = scheduled.pop(0)
+            fn(a)
+            lq -= 1
+
+    wrapper_ref = HOOKFUNC(scheduler)
+    PyOS_InputHookFunctionPointer.value = cast(wrapper_ref, c_void_p).value
+
+    #replace with faster function
+    def schedule(fn, a):
         scheduled.append((fn, a))
 
     __import__(__name__).schedule = schedule
-    del schedule
-    __import__(__name__).schedule(fn,a)
+
+    #now the init code is useless
+    del __import__(__name__).init
+
+def schedule(fn, a):
+    global scheduled
+    if scheduled is None:
+        init()
+    scheduled.append((fn, a))
 
 
 # ========== asyncio stepping ================
@@ -180,12 +186,9 @@ def run(*entrypoints):
     schedule( step, 1)
 
 
-
-
-#make step/pause/resume via "aio" on repl
+#make step/pause/resume/shedule via "aio" on repl
 builtins.aio = __import__(__name__)
 
-
-__ALL__ = ['aio','pause','resume','step']
+__ALL__ = ['aio','pause','resume','step','schedule']
 print("type aio.close() to halt asyncio background operations")
 
