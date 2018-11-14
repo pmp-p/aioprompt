@@ -179,8 +179,9 @@ def step(arg):
         schedule( step, arg)
 
 def run(*entrypoints):
-    global aio
+    global aio, create_task
     aio = asyncio.get_event_loop()
+    create_task = aio.create_task
     for entrypoint in entrypoints:
         aio.create_task( entrypoint() )
     schedule( step, 1)
@@ -188,6 +189,8 @@ def run(*entrypoints):
 
 #make step/pause/resume/shedule via "aio" on repl
 builtins.aio = __import__(__name__)
+
+
 
 __ALL__ = ['aio','pause','resume','step','schedule']
 print("type aio.close() to halt asyncio background operations")

@@ -31,7 +31,7 @@ async def render_ui():
     while True:
         with tui.instance as print:
             #draw a clock
-            print('%2d:%2d:%2d' % time.localtime()[3:6] , x=70, y=1 )
+            print('%2d:%2d:%2d   99%%' % time.localtime()[3:6] , x=70, y=1 )
 
         await asyncio.sleep(1)
         sys.stdout.flush()
