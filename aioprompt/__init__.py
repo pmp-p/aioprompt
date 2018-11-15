@@ -2,20 +2,21 @@ scheduled = None
 scheduler = None
 wrapper_ref = None
 
-#==== display coroutines values ================
-#1:  coroutine()
-#2:  x=coroutine();x
-#3:  x=await coroutine()
+# ==== display coroutines values ================
+# 1:  coroutine()
+# 2:  x=coroutine();x
+# 3:  x=await coroutine()
 
-#1/2/3
+# 1/2/3
 import sys
 import asyncio
 import builtins
 
-#3
+# 3
 import readline
-import ast
 import textwrap
+
+# import ast
 
 sys.stdout.write = sys.__stdout__.write
 
@@ -23,13 +24,14 @@ sys.stdout.write = sys.__stdout__.write
 async def await_displayhook(value):
     try:
         result = await value
-        sys.stdout.write( f':async: {result}\n~~> ')
+        sys.stdout.write(f":async: {result}\n~~> ")
     except RuntimeError as e:
-        sys.stdout.write(f'{e.__class__.__name__}: {str(e)}\n~~> ')
+        sys.stdout.write(f"{e.__class__.__name__}: {str(e)}\n~~> ")
     except Exception as e:
-        pdb(':',e,e.__name__)
+        pdb(":", e, e.__name__)
     finally:
         sys.ps1 = builtins.__ps1__
+
 
 # 1 &  2
 def displayhook(value):
@@ -45,32 +47,34 @@ def displayhook(value):
         sys.ps1 = ""
 
         sys.stdout.write(f":async: awaiting {text}")
-        asyncio.get_event_loop().create_task( await_displayhook(value) )
+        asyncio.get_event_loop().create_task(await_displayhook(value))
     else:
 
         try:
             sys.stdout.write(text)
         except UnicodeEncodeError:
-            bytes = text.encode(sys.stdout.encoding, 'backslashreplace')
-            if hasattr(sys.stdout, 'buffer'):
+            bytes = text.encode(sys.stdout.encoding, "backslashreplace")
+            if hasattr(sys.stdout, "buffer"):
                 sys.stdout.buffer.write(bytes)
             else:
-                text = bytes.decode(sys.stdout.encoding, 'strict')
+                text = bytes.decode(sys.stdout.encoding, "strict")
                 sys.stdout.write(text)
     sys.stdout.write("\n")
     builtins._ = value
+
 
 sys.displayhook = displayhook
 
 # 3
 
+
 async def retry(index):
     try:
         for x in range(10):
             code = readline.get_history_item(index)
-            if code and code.count('await'):
+            if code and code.count("await"):
                 sys.stdout.write(f'{code}"\n')
-                code = textwrap.indent(code,' '*4 )
+                code = textwrap.indent(code, " " * 4)
                 code = f"""
 #==========================================
 import builtins
@@ -89,40 +93,42 @@ async def retry_async_body():
         setattr(__import__('__main__'), new_one , locals()[new_one] )
 #==========================================
 """
-                #sys.stdout.write(f'\n{code}~~> ')
-                bytecode = compile(code, '<asyncify>', 'exec')
+                bytecode = compile(code, "<asyncify>", "exec")
                 exec(bytecode, globals(), globals())
                 await retry_async_body()
-                return sys.stdout.write('~~> ')
+                return sys.stdout.write("~~> ")
 
-            await asyncio.sleep(.001)
-        sys.stdout.write(f':async: code vanished\n~~> ')
+            await asyncio.sleep(0.001)
+        # FIXME: raise old exception
+        sys.stdout.write(f":async: code vanished\n~~> ")
 
     finally:
         sys.ps1 = builtins.__ps1__
 
+
 def excepthook(etype, e, tb):
 
-    if isinstance(e, SyntaxError) and e.filename == '<stdin>':
+    if isinstance(e, SyntaxError) and e.filename == "<stdin>":
         index = readline.get_current_history_length()
         builtins.__ps1__ = sys.ps1
         sys.ps1 = ""
         sys.stdout.write(f':async:  asyncify "')
-        asyncio.get_event_loop().create_task( retry(index) )
-        #discard trace
+        asyncio.get_event_loop().create_task(retry(index))
+        # discard trace
         return
     sys.__excepthook__(etype, e, tb)
+
 
 sys.excepthook = excepthook
 
 
-#======== have asyncio loop runs with interleaved with repl
+# ======== have asyncio loop runs with interleaved with repl
 import sys
 import builtins
 
 
 if not sys.flags.inspect:
-    print("Error: interpreter must be run with -i or PYTHONINSPECT must be set for using",__name__)
+    print("Error: interpreter must be run with -i or PYTHONINSPECT must be set for using", __name__)
     raise SystemExit
 
 
@@ -150,14 +156,15 @@ def init():
     wrapper_ref = HOOKFUNC(scheduler)
     PyOS_InputHookFunctionPointer.value = cast(wrapper_ref, c_void_p).value
 
-    #replace with faster function
+    # replace with faster function
     def schedule(fn, a):
         scheduled.append((fn, a))
 
     __import__(__name__).schedule = schedule
 
-    #now the init code is useless
+    # now the init code is useless
     del __import__(__name__).init
+
 
 def schedule(fn, a):
     global scheduled
@@ -168,30 +175,30 @@ def schedule(fn, a):
 
 # ========== asyncio stepping ================
 
+
 def step(arg):
     global aio
     if aio.is_closed():
-        sys.__stdout__.write(f'\n:async: stopped\n{sys.ps1}')
+        sys.__stdout__.write(f"\n:async: stopped\n{sys.ps1}")
         return
     aio.call_soon(aio.stop)
     aio.run_forever()
     if arg:
-        schedule( step, arg)
+        schedule(step, arg)
+
 
 def run(*entrypoints):
     global aio, create_task
     aio = asyncio.get_event_loop()
     create_task = aio.create_task
     for entrypoint in entrypoints:
-        aio.create_task( entrypoint() )
-    schedule( step, 1)
+        aio.create_task(entrypoint())
+    schedule(step, 1)
 
 
-#make step/pause/resume/shedule via "aio" on repl
+# make step/pause/resume/shedule via "aio" on repl
 builtins.aio = __import__(__name__)
 
 
-
-__ALL__ = ['aio','pause','resume','step','schedule']
+__ALL__ = ["aio", "pause", "resume", "step", "schedule"]
 print("type aio.close() to halt asyncio background operations")
-
