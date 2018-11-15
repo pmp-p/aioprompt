@@ -86,7 +86,7 @@ async def retry_async_body():
     while len(maybe_new):
         new_one = maybe_new.pop(0)
         print(new_one , ':=', locals()[new_one])
-        globals()[new_one] = locals()[new_one]
+        setattr(__import__('__main__'), new_one , locals()[new_one] )
 #==========================================
 """
                 #sys.stdout.write(f'\n{code}~~> ')
