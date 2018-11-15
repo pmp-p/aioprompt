@@ -1,5 +1,5 @@
 from . import *
-
+import time
 #============  test program ===================
 sys.stderr.flush()
 sys.stderr.flush()
@@ -31,7 +31,7 @@ async def render_ui():
     while True:
         with tui.instance as print:
             #draw a clock
-            print('%2d:%2d:%2d   99%%' % time.localtime()[3:6] , x=70, y=1 )
+            print('%2d:%2d:%2d 📻 ☢   99%%' % time.localtime()[3:6] , x=70, y=1 )
 
         await asyncio.sleep(1)
         sys.stdout.flush()
@@ -47,6 +47,11 @@ async def test():
     print('wait me !')
     await asyncio.sleep(1)
     return 666
+
+def hog():
+    while True:
+        print('blocking')
+        time.sleep(1)
 
 run(__main__, render_ui)
 
