@@ -12,14 +12,17 @@ the main test will launch a clock on your repl ( use a VT100 compatible terminal
 
 ![Preview1](./aioprompt.png)
 
-Note that for running Panda3D with that repl you may require to compile both python and panda3D with gcc 7+, as gcc/4 and clang 3/5 may lead to strange behaviour.
+aio ( which actually is the asyncio loop)  namespace provides pause/resume/step/run function to control async loop
+ and add coroutines.
 
-also terminal is not resizeable unless you apply a fix to readline module.
+you can also import them in repl with from aioprompt import * and use them directly
 
-https://github.com/python/cpython/compare/master...pmp-p:master.diff
+to add a task just use : aio.create_task( the_task() )
+or run(the_task)
 
 
 
 ## LATER:
   maybe use linenoise-ng ( MIT ) as a C readline replacement and mimic window.requestAnimationFrame() from javascript.
-  add a C function to set refresh rate in a timely fashion ( Microcontroller style ).
+
+  add a C function to set refresh rate in a timely manner ( microcontroller style ).

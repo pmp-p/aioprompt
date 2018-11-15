@@ -1,6 +1,8 @@
 scheduled = None
 scheduler = None
 wrapper_ref = None
+paused = False #autorun
+
 
 # ==== display coroutines values ================
 # 1:  coroutine()
@@ -122,9 +124,12 @@ def excepthook(etype, e, tb):
 sys.excepthook = excepthook
 
 
-# ======== have asyncio loop runs with interleaved with repl
+# ======== have asyncio loop runs interleaved with repl
 import sys
 import builtins
+import signal
+# *no effect :
+from signal import ( pthread_sigmask, SIG_SETMASK, SIG_BLOCK, SIG_UNBLOCK, SIGWINCH, SIGINT )
 
 
 if not sys.flags.inspect:
@@ -133,18 +138,17 @@ if not sys.flags.inspect:
 
 
 def init():
-    global scheduled, scheduler, wrapper_ref
+    global scheduled, scheduler, scheduler_c, wrapper_ref
     #! KEEP IT WOULD BE GC OTHERWISE!
     # wrapper_ref
 
     scheduled = []
     from ctypes import pythonapi, cast, c_char_p, c_void_p, CFUNCTYPE
 
-    HOOKFUNC = CFUNCTYPE(c_char_p, c_void_p, c_void_p, c_char_p)
-
+    HOOKFUNC = CFUNCTYPE(c_char_p,)
     PyOS_InputHookFunctionPointer = c_void_p.in_dll(pythonapi, "PyOS_InputHook")
 
-    def scheduler(*a, **k):
+    def scheduler():
         global scheduled
         # prevent reenter
         lq = len(scheduled)
@@ -154,7 +158,8 @@ def init():
             lq -= 1
 
     wrapper_ref = HOOKFUNC(scheduler)
-    PyOS_InputHookFunctionPointer.value = cast(wrapper_ref, c_void_p).value
+    scheduler_c = cast(wrapper_ref, c_void_p)
+    PyOS_InputHookFunctionPointer.value = scheduler_c.value
 
     # replace with faster function
     def schedule(fn, a):
@@ -175,17 +180,24 @@ def schedule(fn, a):
 
 # ========== asyncio stepping ================
 
-
 def step(arg):
-    global aio
+    global aio, paused
     if aio.is_closed():
         sys.__stdout__.write(f"\n:async: stopped\n{sys.ps1}")
         return
-    aio.call_soon(aio.stop)
-    aio.run_forever()
+    if not paused:
+        aio.call_soon(aio.stop)
+        aio.run_forever()
     if arg:
         schedule(step, arg)
 
+def pause(duration=-1):
+    global paused
+    paused = True
+
+def resume(delay=-1):
+    global paused
+    paused = False
 
 def run(*entrypoints):
     global aio, create_task
@@ -196,7 +208,7 @@ def run(*entrypoints):
     schedule(step, 1)
 
 
-# make step/pause/resume/shedule via "aio" on repl
+# make step/pause/resume/shedule via "aio" namespace on repl
 builtins.aio = __import__(__name__)
 
 
