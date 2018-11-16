@@ -41,7 +41,12 @@ if you have Panda3D engine installed, you can try it async with:
 
 Quite usefull via ssh for debugging fullscreen game, or simulating Panda3D webgl browser port on your desktop !
 
+refresh rate will be slow but that's expected, actually cpython readline module does not allow to set it
 
+see https://bugs.python.org/issue35243
+
+## known bugs
+multiline triple quoted str are not supported because not using ast (yet).
 
 ## LATER:
   maybe use linenoise-ng ( MIT ) as a C readline replacement and mimic window.requestAnimationFrame() from javascript.

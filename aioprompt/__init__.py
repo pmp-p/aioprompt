@@ -71,20 +71,12 @@ sys.displayhook = displayhook
 
 # 3
 
-
-async def retry(index):
-    try:
-        for x in range(10):
-            code = readline.get_history_item(index)
-            if code and code.count("await"):
-                sys.stdout.write(f'{code}"\n')
-                code = textwrap.indent(code, " " * 4)
-                code = f"""
+async_skeleton = """
 #==========================================
 import builtins
 async def retry_async_body():
     __snapshot = list( locals().keys() )
-{code}
+{}
     maybe_new = list( locals().keys() )
     while len(__snapshot):
         try:maybe_new.remove( __snapshot.pop() )
@@ -97,7 +89,48 @@ async def retry_async_body():
         setattr(__import__('__main__'), new_one , locals()[new_one] )
 #==========================================
 """
-                bytecode = compile(code, "<asyncify>", "exec")
+
+async def retry(index):
+    try:
+        for x in range(10):
+            code = readline.get_history_item(index)
+            if code and code.count("await"):
+                sys.stdout.write(f'{code}"\n')
+                code = async_skeleton.format(  textwrap.indent(code, " " * 4) )
+                try:
+                    bytecode = compile(code, "<asyncify>", "exec")
+                except IndentationError:
+
+                    stack = [ readline.get_history_item(index)]
+
+                    #pep8 indents
+                    if stack[-1][0]==' ':
+                        indent = " " * 4
+                    else:
+                        indent = '\t'
+                    line_index = index -1
+                    while line_index>=0:
+                        code =  readline.get_history_item(line_index)
+                        if code is None:
+                            break
+
+                        if code and len(code):
+
+#FIXME: multiline triple quotes and mixing indent styles.
+                            if not code[0] in ' #':
+                                if code[0] != indent[0]:
+                                    line_index = 0
+
+                        stack.append( "{}{}".format(indent,code) )
+                        line_index -= 1
+
+                    stack.reverse()
+                    for line,code in enumerate(stack):
+                        sys.stdout.write(f":async: {line}:{repr(code)}\n")
+                    # FIXME: what about non PEP8 tabs indentations ?
+                    code = async_skeleton.format( '\n'.join( stack ) )
+                    bytecode = compile(code, "<asyncify>", "exec")
+
                 exec(bytecode, globals(), globals())
                 await retry_async_body()
                 return sys.stdout.write("~~> ")

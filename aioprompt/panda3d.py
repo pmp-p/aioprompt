@@ -136,9 +136,9 @@ You can start panda just now with :
 
 >>> MyApp.instance.build()   # to add a cube
 
->>> aio.create_task( MyApp.instance.update() )  # to spin it
+>>> aio.create_task( MyApp.instance.update() )  # to start a spinning coroutine
 or
->>> run( MyApp.instance.update ) # a shortcut
+>>> run( MyApp.instance.update ) # the same as a shortcut which can takes lists, note no ()
 
 use pause()/resume() to hang/restart all asyncio operations
 aio.close() to terminate them
