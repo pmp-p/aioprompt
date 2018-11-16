@@ -46,7 +46,7 @@ refresh rate will be slow but that's expected, actually cpython readline module 
 see https://bugs.python.org/issue35243
 
 ## known bugs
-multiline triple quoted str are not supported because not using ast (yet).
+multiline triple """ ''' """ quoted str would fail because not using decent parser.
 
 ## LATER:
   maybe use linenoise-ng ( MIT ) as a C readline replacement and mimic window.requestAnimationFrame() from javascript.

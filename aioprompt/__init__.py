@@ -4,7 +4,7 @@ wrapper_ref = None
 paused = None  # autorun
 create_task = None
 close = None
-loop =None
+loop = None
 
 # ==== display coroutines values ================
 # 1:  coroutine()
@@ -19,8 +19,6 @@ import builtins
 # 3
 import readline
 import textwrap
-
-# import ast
 
 sys.stdout.write = sys.__stdout__.write
 
@@ -70,11 +68,9 @@ def displayhook(value):
 sys.displayhook = displayhook
 
 # 3
-
 async_skeleton = """
 #==========================================
-import builtins
-async def retry_async_body():
+async def retry_async_wrap():
     __snapshot = list( locals().keys() )
 {}
     maybe_new = list( locals().keys() )
@@ -90,55 +86,71 @@ async def retry_async_body():
 #==========================================
 """
 
+
+def retry_with_indent(stack, indent, line_index):
+    import ast
+
+    triple = False
+
+    while line_index >= 0:
+        code = readline.get_history_item(line_index)
+        if code is None:
+            return "#error getting code stack"
+
+        if code and len(code):
+
+            # FIXME: multiline triple quotes and mixing indent styles.
+            if code.count('"""') or code.count("'''"):  # <=  FIXME: this may not be bullet proof
+                if triple:
+                    triple = False
+                else:
+                    triple = True
+            if not triple:
+                # not a comment and no more indented, that's the top of the block.
+                if (code.strip()[0] != "#") and (code[0] != indent[0]):
+                    line_index = 0
+
+                # enforce pep8 indent
+                while code[0] == "\t":
+                    code = code.replace("\t", " " * 4, 1)
+            stack.insert(0, code)
+
+        line_index -= 1
+
+    code = async_skeleton.format(textwrap.indent("\n".join(stack), " " * 4))
+    sys.stdout.write(
+        f'''\n
+#_____________________________________________
+{code}
+#_____________________________________________
+"'''
+    )
+    return code
+
+
 async def retry(index):
     try:
-        for x in range(10):
-            code = readline.get_history_item(index)
-            if code and code.count("await"):
-                sys.stdout.write(f'{code}"\n')
-                code = async_skeleton.format(  textwrap.indent(code, " " * 4) )
-                try:
-                    bytecode = compile(code, "<asyncify>", "exec")
-                except IndentationError:
+        last = readline.get_history_item(index)
 
-                    stack = [ readline.get_history_item(index)]
+        # pep8 indents
+        first = last[0]
+        if first in " \t":
+            # enforce pep8 indent
+            while last[0] == "\t":
+                last = last.replace("\t", " " * 4, 1)
+            code = retry_with_indent([last], first, index - 1)
+        else:
+            sys.stdout.write(f'{last}"\n')
+            code = async_skeleton.format(" " * 4 + last)
 
-                    #pep8 indents
-                    if stack[-1][0]==' ':
-                        indent = " " * 4
-                    else:
-                        indent = '\t'
-                    line_index = index -1
-                    while line_index>=0:
-                        code =  readline.get_history_item(line_index)
-                        if code is None:
-                            break
+        bytecode = compile(code, "<asyncify>", "exec")
+        exec(bytecode, globals(), globals())
+        await retry_async_wrap()
+        return sys.stdout.write("~~> ")
 
-                        if code and len(code):
-
-#FIXME: multiline triple quotes and mixing indent styles.
-                            if not code[0] in ' #':
-                                if code[0] != indent[0]:
-                                    line_index = 0
-
-                        stack.append( "{}{}".format(indent,code) )
-                        line_index -= 1
-
-                    stack.reverse()
-                    for line,code in enumerate(stack):
-                        sys.stdout.write(f":async: {line}:{repr(code)}\n")
-                    # FIXME: what about non PEP8 tabs indentations ?
-                    code = async_skeleton.format( '\n'.join( stack ) )
-                    bytecode = compile(code, "<asyncify>", "exec")
-
-                exec(bytecode, globals(), globals())
-                await retry_async_body()
-                return sys.stdout.write("~~> ")
-
-            await asyncio.sleep(0.001)
+    except Exception as e:
         # FIXME: raise old exception
-        sys.stdout.write(f":async: code vanished\n~~> ")
-
+        sys.stdout.write(f":async: code vanished {e}\n~~> ")
     finally:
         sys.ps1 = sys.__ps1__
 
@@ -244,11 +256,11 @@ def run(*entrypoints, start=True):
     global aio, create_task, paused, close, loop
 
     if loop is None:
-        #some aliases to match import * and import as aio
+        # some aliases to match import * and import as aio
         loop = aio = asyncio.get_event_loop()
         aio.loop = loop
         create_task = aio.create_task
-        aio.run =  run
+        aio.run = run
         close = aio.close
 
     for entrypoint in entrypoints:
