@@ -5,17 +5,19 @@ minimal py3.6+ repl for asyncio using **readline module** tricks. That module is
 tests are made on 3.7, but 3.6 should be fine too except for certains "await" syntax use. eg f'{await test()}' would not work on 3.6
 
 
-testing:
+Testing:
 
 ```
-python3.7 -i -maioprompt
+$ git clone https://github.com/pmp-p/aioprompt.git
+$ cd aioprompt
+$ PYTHONPATH=. python3.7 -i -maioprompt
 ```
 
-the main test will launch a clock on your repl ( use a VT100 compatible terminal ).
+The main test will launch a clock on your repl ( use a VT100 utf-8 compatible terminal ).
 
 ![Preview1](./aioprompt.png)
 
-aio ( which actually is the asyncio loop)  namespace provides pause/resume/step/run functions to control async loop
+aio.* ( which actually is the asyncio loop) namespace provides pause/resume/step/run functions to control async loop
  and add coroutines.
 
 you can also import them in repl with from aioprompt import * and use them directly
@@ -27,14 +29,17 @@ you can also import them in repl with from aioprompt import * and use them direc
 to add a task just use : aio.create_task( the_task() )
 or run(the_task)
 
-## PANDA3D
+## Panda3D
 
 if you have Panda3D engine installed, you can try it async with:
 
-import aioprompt.panda3d
-
+```
+>>> import aioprompt.panda3d
+```
 
 ![Preview1](./async_panda3d.png)
+
+Quite usefull via ssh for debugging fullscreen game, or simulating Panda3D webgl browser port on your desktop !
 
 
 
@@ -42,3 +47,6 @@ import aioprompt.panda3d
   maybe use linenoise-ng ( MIT ) as a C readline replacement and mimic window.requestAnimationFrame() from javascript.
 
   add a C function to set refresh rate in a timely manner ( microcontroller style ).
+
+  add to H3Droid python3.7 interpreter as a PYTHONSTARTUP script.
+
