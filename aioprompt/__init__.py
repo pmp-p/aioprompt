@@ -129,6 +129,7 @@ def retry_with_indent(stack, indent, line_index):
 
 
 async def retry(index):
+    global last_fail
     try:
         last = readline.get_history_item(index)
 
@@ -149,27 +150,28 @@ async def retry(index):
 
         exec(bytecode, globals(), globals())
         await retry_async_wrap()
-        #success ? clear all previous failures
+        # success ? clear all previous failures
         last_fail.clear()
 
         return sys.stdout.write("~~> ")
 
     except Exception as e:
         # FIXME: raise old exception
-        sys.__excepthook__( *last_fail.pop(0) )
+        sys.__excepthook__(*last_fail.pop(0))
         sys.stdout.write(f":async: can't use code : {e}\n~~> ")
     finally:
         sys.ps1 = sys.__ps1__
 
-def excepthook(etype, e, tb):
 
+def excepthook(etype, e, tb):
+    global last_fail
     if isinstance(e, SyntaxError) and e.filename == "<stdin>":
         index = readline.get_current_history_length()
         sys.__ps1__ = sys.ps1
         sys.ps1 = ""
         asyncio.get_event_loop().create_task(retry(index))
         # store trace
-        last_fail.append( [etype, e, tb] )
+        last_fail.append([etype, e, tb])
         return
     sys.__excepthook__(etype, e, tb)
 
@@ -187,7 +189,7 @@ if not sys.flags.inspect:
 
 
 def init():
-    global scheduled, scheduler,  wrapper_ref
+    global scheduled, scheduler, wrapper_ref
     #! KEEP IT WOULD BE GC OTHERWISE!
     # wrapper_ref
 
