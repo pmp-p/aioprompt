@@ -1,8 +1,10 @@
 scheduled = None
 scheduler = None
 wrapper_ref = None
-paused = False #autorun
-
+paused = None  # autorun
+create_task = None
+close = None
+loop =None
 
 # ==== display coroutines values ================
 # 1:  coroutine()
@@ -32,7 +34,7 @@ async def await_displayhook(value):
     except Exception as e:
         pdb(":", e, e.__name__)
     finally:
-        sys.ps1 = builtins.__ps1__
+        sys.ps1 = sys.__ps1__
 
 
 # 1 &  2
@@ -45,7 +47,7 @@ def displayhook(value):
     import asyncio
 
     if asyncio.iscoroutine(value):
-        builtins.__ps1__ = sys.ps1
+        sys.__ps1__ = sys.ps1
         sys.ps1 = ""
 
         sys.stdout.write(f":async: awaiting {text}")
@@ -105,14 +107,14 @@ async def retry_async_body():
         sys.stdout.write(f":async: code vanished\n~~> ")
 
     finally:
-        sys.ps1 = builtins.__ps1__
+        sys.ps1 = sys.__ps1__
 
 
 def excepthook(etype, e, tb):
 
     if isinstance(e, SyntaxError) and e.filename == "<stdin>":
         index = readline.get_current_history_length()
-        builtins.__ps1__ = sys.ps1
+        sys.__ps1__ = sys.ps1
         sys.ps1 = ""
         sys.stdout.write(f':async:  asyncify "')
         asyncio.get_event_loop().create_task(retry(index))
@@ -128,8 +130,9 @@ sys.excepthook = excepthook
 import sys
 import builtins
 import signal
+
 # *no effect :
-from signal import ( pthread_sigmask, SIG_SETMASK, SIG_BLOCK, SIG_UNBLOCK, SIGWINCH, SIGINT )
+from signal import pthread_sigmask, SIG_SETMASK, SIG_BLOCK, SIG_UNBLOCK, SIGWINCH, SIGINT
 
 
 if not sys.flags.inspect:
@@ -145,7 +148,7 @@ def init():
     scheduled = []
     from ctypes import pythonapi, cast, c_char_p, c_void_p, CFUNCTYPE
 
-    HOOKFUNC = CFUNCTYPE(c_char_p,)
+    HOOKFUNC = CFUNCTYPE(c_char_p)
     PyOS_InputHookFunctionPointer = c_void_p.in_dll(pythonapi, "PyOS_InputHook")
 
     def scheduler():
@@ -180,6 +183,7 @@ def schedule(fn, a):
 
 # ========== asyncio stepping ================
 
+
 def step(arg):
     global aio, paused
     if aio.is_closed():
@@ -191,26 +195,44 @@ def step(arg):
     if arg:
         schedule(step, arg)
 
+
 def pause(duration=-1):
     global paused
     paused = True
+
 
 def resume(delay=-1):
     global paused
     paused = False
 
-def run(*entrypoints):
-    global aio, create_task
-    aio = asyncio.get_event_loop()
-    create_task = aio.create_task
+
+def run(*entrypoints, start=True):
+
+    global aio, create_task, paused, close, loop
+
+    if loop is None:
+        #some aliases to match import * and import as aio
+        loop = aio = asyncio.get_event_loop()
+        aio.loop = loop
+        create_task = aio.create_task
+        aio.run =  run
+        close = aio.close
+
     for entrypoint in entrypoints:
         aio.create_task(entrypoint())
-    schedule(step, 1)
+
+    if paused is None:
+        schedule(step, 1)
+
+    if start:
+        paused = False
+    else:
+        paused = True
 
 
 # make step/pause/resume/shedule via "aio" namespace on repl
 builtins.aio = __import__(__name__)
 
 
-__ALL__ = ["aio", "pause", "resume", "step", "schedule"]
+__ALL__ = ["loop", "close", "create_task", "pause", "resume", "step", "schedule"]
 print("type aio.close() to halt asyncio background operations")

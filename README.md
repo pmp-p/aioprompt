@@ -1,6 +1,9 @@
 # aioprompt
 
-minimal py3.7+ repl for asyncio using **readline module** tricks. That module is often available on GNU/Linux platform.
+minimal py3.6+ repl for asyncio using **readline module** tricks. That module is often available on GNU/Linux platform.
+
+tests are made on 3.7, but 3.6 should be fine too except for certains "await" syntax use. eg f'{await test()}' would not work on 3.6
+
 
 testing:
 
@@ -12,13 +15,22 @@ the main test will launch a clock on your repl ( use a VT100 compatible terminal
 
 ![Preview1](./aioprompt.png)
 
-aio ( which actually is the asyncio loop)  namespace provides pause/resume/step/run function to control async loop
+aio ( which actually is the asyncio loop)  namespace provides pause/resume/step/run functions to control async loop
  and add coroutines.
 
 you can also import them in repl with from aioprompt import * and use them directly
 
+"loop", "close", "create_task", "pause", "resume", "step"
+
+"schedule" is a special function that mimic micropython.schedule function using PyOS_InputHook from readline module.
+
 to add a task just use : aio.create_task( the_task() )
 or run(the_task)
+
+
+if you have Panda3D engine installed, you can try it async with:
+
+import aioprompt.panda3d
 
 
 
