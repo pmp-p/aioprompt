@@ -27,10 +27,14 @@ you can also import them in repl with from aioprompt import * and use them direc
 to add a task just use : aio.create_task( the_task() )
 or run(the_task)
 
+## PANDA3D
 
 if you have Panda3D engine installed, you can try it async with:
 
 import aioprompt.panda3d
+
+
+![Preview1](./async_panda3d.png)
 
 
 
