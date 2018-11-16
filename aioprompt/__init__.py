@@ -5,7 +5,7 @@ paused = None  # autorun
 create_task = None
 close = None
 loop = None
-
+last_fail = []
 # ==== display coroutines values ================
 # 1:  coroutine()
 # 2:  x=coroutine();x
@@ -140,20 +140,26 @@ async def retry(index):
                 last = last.replace("\t", " " * 4, 1)
             code = retry_with_indent([last], first, index - 1)
         else:
-            sys.stdout.write(f'{last}"\n')
+
             code = async_skeleton.format(" " * 4 + last)
 
         bytecode = compile(code, "<asyncify>", "exec")
+
+        sys.stdout.write(f':async:  asyncify "{code}"\n')
+
         exec(bytecode, globals(), globals())
         await retry_async_wrap()
+        #success ? clear all previous failures
+        last_fail.clear()
+
         return sys.stdout.write("~~> ")
 
     except Exception as e:
         # FIXME: raise old exception
-        sys.stdout.write(f":async: code vanished {e}\n~~> ")
+        sys.__excepthook__( *last_fail.pop(0) )
+        sys.stdout.write(f":async: can't use code : {e}\n~~> ")
     finally:
         sys.ps1 = sys.__ps1__
-
 
 def excepthook(etype, e, tb):
 
@@ -161,9 +167,9 @@ def excepthook(etype, e, tb):
         index = readline.get_current_history_length()
         sys.__ps1__ = sys.ps1
         sys.ps1 = ""
-        sys.stdout.write(f':async:  asyncify "')
         asyncio.get_event_loop().create_task(retry(index))
-        # discard trace
+        # store trace
+        last_fail.append( [etype, e, tb] )
         return
     sys.__excepthook__(etype, e, tb)
 
