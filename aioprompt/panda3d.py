@@ -81,7 +81,11 @@ class MyApp(ShowBase):
 
     async def async_loop(self):
         while not aio.is_closed():
-            direct.task.TaskManagerGlobal.taskMgr.step()
+            try:
+                direct.task.TaskManagerGlobal.taskMgr.step()
+            except SystemExit:
+                print('87: Panda3D stopped',file= __import__('sys').stderr)
+                break
             await asyncio.sleep(self.frame_time)
 
     def async_run(self):

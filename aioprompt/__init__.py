@@ -6,6 +6,7 @@ create_task = None
 close = None
 loop = None
 last_fail = []
+lives = True
 # ==== display coroutines values ================
 # 1:  coroutine()
 # 2:  x=coroutine();x
@@ -23,6 +24,11 @@ import textwrap
 sys.stdout.write = sys.__stdout__.write
 
 
+def pdb(*argv, **kw):
+    kw['file']=sys.__stderr__
+    print(*argv, **kw)
+
+
 async def await_displayhook(value):
     try:
         result = await value
@@ -30,7 +36,8 @@ async def await_displayhook(value):
     except RuntimeError as e:
         sys.stdout.write(f"{e.__class__.__name__}: {str(e)}\n~~> ")
     except Exception as e:
-        pdb(":", e, e.__name__)
+        pdb(":", e)
+        raise
     finally:
         sys.ps1 = sys.__ps1__
 
@@ -148,7 +155,7 @@ async def retry(index):
 
         sys.stdout.write(f':async:  asyncify "{code}"\n')
 
-        exec(bytecode, globals(), globals())
+        exec(bytecode, __import__('__main__').__dict__, globals())
         await retry_async_wrap()
         # success ? clear all previous failures
         last_fail.clear()
@@ -234,6 +241,10 @@ def schedule(fn, a):
 
 def step(arg):
     global aio, paused
+    if paused is None:
+        aio.close()
+        return
+
     if aio.is_closed():
         sys.__stdout__.write(f"\n:async: stopped\n{sys.ps1}")
         return
@@ -244,15 +255,8 @@ def step(arg):
         schedule(step, arg)
 
 
-def pause(duration=-1):
-    global paused
-    paused = True
-
-
-def resume(delay=-1):
-    global paused
-    paused = False
-
+async def asleep_ms(ms=0):
+    await asyncio.sleep(float(ms)/1000)
 
 def run(*entrypoints, start=True):
 
@@ -266,6 +270,8 @@ def run(*entrypoints, start=True):
         aio.run = run
         close = aio.close
 
+        aio.asleep_ms = asleep_ms
+
     for entrypoint in entrypoints:
         aio.create_task(entrypoint())
 
@@ -278,9 +284,26 @@ def run(*entrypoints, start=True):
         paused = True
 
 
+#bloat  can do aio.paused = 0/1
+def pause(duration=-1):
+    global paused
+    paused = True
+
+
+def resume(delay=-1):
+    global paused
+    paused = False
+
+#
+
+aio = sys.modules.get(__name__)
+# make loop reachable from various aio monkey patches
+builtins.aio = aio
+
 # make step/pause/resume/shedule via "aio" namespace on repl
-builtins.aio = __import__(__name__)
+__import__('__main__').aio = aio
 
 
-__ALL__ = ["loop", "close", "create_task", "pause", "resume", "step", "schedule"]
+__ALL__ = ["aio", "loop", "load", "close", "create_task", "paused", "step", "run", "asleep_ms", "schedule", "pause", "resume"]
+
 print("type aio.close() to halt asyncio background operations")
