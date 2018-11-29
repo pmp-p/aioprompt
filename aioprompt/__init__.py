@@ -125,13 +125,13 @@ def retry_with_indent(stack, indent, line_index):
         line_index -= 1
 
     code = async_skeleton.format(textwrap.indent("\n".join(stack), " " * 4))
-    sys.stdout.write(
-        f'''\n
-#_____________________________________________
-{code}
-#_____________________________________________
-"'''
-    )
+#    sys.stdout.write(
+#        f'''\n
+##_____________________________________________
+#{code}
+##_____________________________________________
+#"'''
+#    )
     return code
 
 
@@ -153,7 +153,8 @@ async def retry(index):
 
         bytecode = compile(code, "<asyncify>", "exec")
 
-        sys.stdout.write(f':async:  asyncify "{code}"\n')
+#        sys.stdout.write(f':async:  asyncify "{code}"\n')
+        sys.stdout.write(f':async:  asyncify "[code stack rewritten]"\n')
 
         exec(bytecode, __import__('__main__').__dict__, globals())
         await retry_async_wrap()
