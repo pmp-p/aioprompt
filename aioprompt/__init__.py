@@ -20,9 +20,7 @@ import builtins
 # 3
 import readline
 import textwrap
-
-sys.stdout.write = sys.__stdout__.write
-
+import traceback
 
 def pdb(*argv, **kw):
     kw['file']=sys.__stderr__
@@ -75,6 +73,10 @@ def displayhook(value):
 sys.displayhook = displayhook
 
 # 3
+
+# https://bugs.python.org/issue34616
+# https://github.com/ipython/ipython/blob/320d21bf56804541b27deb488871e488eb96929f/IPython/core/interactiveshell.py#L121-L150
+
 async_skeleton = """
 #==========================================
 async def retry_async_wrap():
@@ -85,7 +87,7 @@ async def retry_async_wrap():
         try:maybe_new.remove( __snapshot.pop() )
         except:pass
     maybe_new.remove('__snapshot')
-    print('_'*30)
+#    print('_'*30)
     while len(maybe_new):
         new_one = maybe_new.pop(0)
         print(new_one , ':=', locals()[new_one])
@@ -137,10 +139,11 @@ def retry_with_indent(stack, indent, line_index):
 
 async def retry(index):
     global last_fail
+    may_have_value = False
     try:
         last = readline.get_history_item(index)
 
-        # pep8 indents
+        # detect indents
         first = last[0]
         if first in " \t":
             # enforce pep8 indent
@@ -148,7 +151,10 @@ async def retry(index):
                 last = last.replace("\t", " " * 4, 1)
             code = retry_with_indent([last], first, index - 1)
         else:
-
+            #one liner
+            if last.find('await ')>=0:
+                may_have_value = True
+                last = 'builtins._ = {}'.format(last)
             code = async_skeleton.format(" " * 4 + last)
 
         bytecode = compile(code, "<asyncify>", "exec")
@@ -160,6 +166,9 @@ async def retry(index):
         await retry_async_wrap()
         # success ? clear all previous failures
         last_fail.clear()
+        if may_have_value:
+            if builtins._ is not None:
+                sys.stdout.write('%r\n' % builtins._)
 
         return sys.stdout.write("~~> ")
 
@@ -167,6 +176,7 @@ async def retry(index):
         # FIXME: raise old exception
         sys.__excepthook__(*last_fail.pop(0))
         sys.stdout.write(f":async: can't use code : {e}\n~~> ")
+        traceback.print_exc()
     finally:
         sys.ps1 = sys.__ps1__
 
