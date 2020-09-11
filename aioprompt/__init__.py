@@ -1,10 +1,5 @@
-scheduled = None
-scheduler = None
-wrapper_ref = None
 paused = None  # autorun
 create_task = None
-close = None
-loop = None
 last_fail = []
 lives = True
 # ==== display coroutines values ================
@@ -18,7 +13,7 @@ import asyncio
 import builtins
 
 # 3
-import readline
+#import readline #not here we could need to fake it
 import textwrap
 import traceback
 
@@ -196,125 +191,16 @@ def excepthook(etype, e, tb):
 
 sys.excepthook = excepthook
 
+if sys.platform in ('android','bionic'):
+    from .aioprompt_bionic import *
+elif sys.platform == 'wasm':
+    from .aioprompt_wasm import *
+elif sys.platform == 'linux':
+    import readline
+    from . import aioprompt_linux as platform
+    run = platform.run
+    loop = platform.loop
 
-# ======== have asyncio loop runs interleaved with repl
-import sys
-import builtins
+else:
+    print(__name__,'does not support',sys.platform, file=sys.stderr)
 
-if not sys.flags.inspect:
-    print("Error: interpreter must be run with -i or PYTHONINSPECT must be set for using", __name__)
-    raise SystemExit
-
-
-def init():
-    global scheduled, scheduler, wrapper_ref
-    #! KEEP IT WOULD BE GC OTHERWISE!
-    # wrapper_ref
-
-    scheduled = []
-    from ctypes import pythonapi, cast, c_char_p, c_void_p, CFUNCTYPE
-
-    HOOKFUNC = CFUNCTYPE(c_char_p)
-    PyOS_InputHookFunctionPointer = c_void_p.in_dll(pythonapi, "PyOS_InputHook")
-
-    def scheduler():
-        global scheduled
-        # prevent reenter
-        lq = len(scheduled)
-        while lq:
-            fn, a = scheduled.pop(0)
-            fn(a)
-            lq -= 1
-
-    wrapper_ref = HOOKFUNC(scheduler)
-    scheduler_c = cast(wrapper_ref, c_void_p)
-    PyOS_InputHookFunctionPointer.value = scheduler_c.value
-
-    # replace with faster function
-    def schedule(fn, a):
-        scheduled.append((fn, a))
-
-    __import__(__name__).schedule = schedule
-
-    # now the init code is useless
-    del __import__(__name__).init
-
-
-def schedule(fn, a):
-    global scheduled
-    if scheduled is None:
-        init()
-    scheduled.append((fn, a))
-
-
-# ========== asyncio stepping ================
-
-
-def step(arg):
-    global aio, paused
-    if paused is None:
-        aio.close()
-        return
-
-    if aio.is_closed():
-        sys.__stdout__.write(f"\n:async: stopped\n{sys.ps1}")
-        return
-    if not paused:
-        aio.call_soon(aio.stop)
-        aio.run_forever()
-    if arg:
-        schedule(step, arg)
-
-
-async def asleep_ms(ms=0):
-    await asyncio.sleep(float(ms)/1000)
-
-def run(*entrypoints, start=True):
-
-    global aio, create_task, paused, close, loop
-
-    if loop is None:
-        # some aliases to match import * and import as aio
-        loop = aio = asyncio.get_event_loop()
-        aio.loop = loop
-        create_task = aio.create_task
-        aio.run = run
-        close = aio.close
-
-        aio.asleep_ms = asleep_ms
-
-    for entrypoint in entrypoints:
-        aio.create_task(entrypoint())
-
-    if paused is None:
-        schedule(step, 1)
-
-    if start:
-        paused = False
-    else:
-        paused = True
-
-
-#bloat  can do aio.paused = 0/1
-def pause(duration=-1):
-    global paused
-    paused = True
-
-
-def resume(delay=-1):
-    global paused
-    paused = False
-
-#
-
-aio = sys.modules.get(__name__)
-# make loop reachable from various aio monkey patches
-builtins.aio = aio
-
-# make step/pause/resume/shedule via "aio" namespace on repl
-__import__('__main__').aio = aio
-
-
-__ALL__ = ["aio", "loop", "load", "close", "create_task", "paused", "step", "run", "asleep_ms", "schedule", "pause", "resume"]
-
-print("type aio.close() to halt asyncio background operations")

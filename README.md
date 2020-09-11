@@ -48,10 +48,3 @@ see https://bugs.python.org/issue35243
 ## known bugs
 multiline triple """ ''' """ quoted str would fail because not using decent parser.
 
-## LATER:
-  maybe use linenoise-ng ( MIT ) as a C readline replacement and mimic window.requestAnimationFrame() from javascript.
-
-  add a C function to set refresh rate in a timely manner ( microcontroller style ).
-
-  add to H3Droid python3.7 interpreter as a PYTHONSTARTUP script.
-

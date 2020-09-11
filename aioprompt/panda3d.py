@@ -4,15 +4,7 @@ from . import *
 # panda3d test program
 
 import panda3d
-import panda3d.core as p3d
 
-p3d.loadPrcFileData("", "load-display pandagles2")
-p3d.loadPrcFileData("", "win-origin -2 -2")
-p3d.loadPrcFileData("", "win-size 848 480")
-p3d.loadPrcFileData("", "support-threads #f")
-p3d.loadPrcFileData("", "textures-power-2 down")
-p3d.loadPrcFileData("", "textures-square down")
-p3d.loadPrcFileData("", "show-frame-rate-meter #t")
 
 import direct
 import direct.task
@@ -80,7 +72,7 @@ class MyApp(ShowBase):
     frame_time = 1.0 / 60
 
     async def async_loop(self):
-        while not aio.is_closed():
+        while not aio.loop.is_closed():
             try:
                 direct.task.TaskManagerGlobal.taskMgr.step()
             except SystemExit:
@@ -121,7 +113,7 @@ class MyApp(ShowBase):
     # cube spinner
 
     async def update(self, dt=0):
-        while not aio.is_closed():
+        while not aio.loop.is_closed():
             group = self.cubes
             h, p, r = group.get_hpr()
             group.setH(h + 1)
@@ -129,8 +121,8 @@ class MyApp(ShowBase):
             group.setY(r + 1)
             await asyncio.sleep(self.frame_time)
 
-
-print(
+if not hasattr(sys, "getandroidapilevel"):
+    print(
     """
 - This async demo uses no threads at all -
 
